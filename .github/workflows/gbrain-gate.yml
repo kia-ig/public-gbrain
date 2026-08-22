@@ -1,0 +1,60 @@
+name: gbrain gated build
+
+on:
+  pull_request:
+  push:
+    branches:
+      - "harvey/**"
+      - "kia/**"
+
+permissions:
+  contents: read
+  id-token: write
+  attestations: write
+
+concurrency:
+  group: gbrain-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the reviewed commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install pinned Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+
+      - name: Install frozen dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Run #4369 regression tests
+        run: bun test test/sync-anchor-4369.test.ts
+
+      - name: Run source-isolation gate
+        run: bun run check:test-isolation
+
+      - name: Build candidate
+        run: bun build --compile --outfile bin/gbrain-linux-x64 src/cli.ts
+
+      - name: Record candidate digest
+        run: sha256sum bin/gbrain-linux-x64 | tee gbrain-artifact.sha256
+
+      - name: Attest candidate artifact
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: bin/gbrain-linux-x64
+
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: gbrain-gate-evidence-${{ github.sha }}
+          path: |
+            gbrain-artifact.sha256
+            bin/gbrain-linux-x64
