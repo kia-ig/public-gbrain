@@ -47,7 +47,9 @@ describe('#4369: registered source anchors are immutable per source', () => {
   test('refuses a foreign existing directory and preserves the registered path', async () => {
     await writeSyncAnchor(engine, 'source-a', 'repo_path', foreign);
 
-    expect(realpathSync(await readSyncAnchor(engine, 'source-a', 'repo_path')!)).toBe(realpathSync(registered));
+    const anchor = await readSyncAnchor(engine, 'source-a', 'repo_path');
+    expect(anchor).not.toBeNull();
+    expect(realpathSync(anchor!)).toBe(realpathSync(registered));
   });
 
   test('accepts the registered directory through a symlink while preserving identity', async () => {
@@ -56,7 +58,9 @@ describe('#4369: registered source anchors are immutable per source', () => {
 
     await writeSyncAnchor(engine, 'source-a', 'repo_path', alias);
 
-    expect(realpathSync(await readSyncAnchor(engine, 'source-a', 'repo_path')!)).toBe(realpathSync(registered));
+    const anchor = await readSyncAnchor(engine, 'source-a', 'repo_path');
+    expect(anchor).not.toBeNull();
+    expect(realpathSync(anchor!)).toBe(realpathSync(registered));
     expect(readlinkSync(alias)).toBe(registered);
   });
 
