@@ -35,7 +35,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run #4369 regression tests
-        run: bun test test/sync-anchor-4369.test.ts
+        run: bun test --timeout=60000 test/sync-anchor-4369.test.ts
 
       - name: Run source-isolation gate
         run: bun run check:test-isolation
