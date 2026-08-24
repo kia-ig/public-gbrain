@@ -1,0 +1,46 @@
+name: Middle-layer privacy gate
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  privacy-boundary:
+    name: Privacy and quarantine boundary
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Check repository privacy rule
+        run: bash scripts/check-privacy.sh
+
+      - name: Check agent-voice PII boundary
+        run: bash scripts/check-no-pii-in-agent-voice.sh
+
+      - name: Check synthetic corpus privacy
+        run: bash scripts/check-synthetic-corpus-privacy.sh
+
+      - name: Check fixture names
+        run: bash scripts/check-test-real-names.sh
+
+      - name: Check proposal PII boundary
+        run: bash scripts/check-proposal-pii.sh
+
+      - name: Check pinned-document privacy
+        run: bash scripts/check-pin-doc-privacy.sh
+
+      - name: Check whitespace and conflict markers
+        run: |
+          git diff --check
+          if git grep -n -I -E '^(<<<<<<< |>>>>>>> |\|\|\|\|\|\|\| )' -- . ':!docs/images'; then
+            echo 'Merge-conflict markers found in tracked text.' >&2
+            exit 1
+          fi
