@@ -231,6 +231,32 @@ export async function writeSyncAnchor(
 ): Promise<void> {
   if (sourceId) {
     const col = which === 'repo_path' ? 'local_path' : 'last_commit';
+    // #4369: sources.local_path is a registration, not a per-run sync
+    // parameter. Once a source has a registered directory, refuse to move
+    // it because a one-off sync against a foreign directory would otherwise
+    // permanently repoint every later sync of that source. A null path is
+    // still allowed to bootstrap an unregistered source; explicit source
+    // registration remains the preferred path.
+    if (which === 'repo_path') {
+      const registered = await readSyncAnchor(engine, sourceId, 'repo_path');
+      if (registered !== null) {
+        try {
+          if (realpathSync(registered) !== realpathSync(value)) {
+            serr(
+              `[sync] source ${sourceId} local_path stays at "${registered}" — ` +
+              `not repointing it to "${value}". Register the new directory explicitly before syncing it.`,
+            );
+            return;
+          }
+        } catch {
+          serr(
+            `[sync] source ${sourceId} local_path stays at "${registered}" — ` +
+            `cannot prove that "${value}" is the same directory.`,
+          );
+          return;
+        }
+      }
+    }
     // last_sync_at bookmarked on every last_commit advance.
     if (which === 'last_commit') {
       // Wave-D review (#4369 follow-up): guard the commit-anchor trio
